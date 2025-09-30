@@ -23,12 +23,24 @@ _start:
     cmp al, 0              ; fin string ?
     je .done_convert
 
+    ; Vérifier si c'est bien un chiffre
+    cmp al, '0'
+    jl .invalid_input
+    cmp al, '9'
+    jg .invalid_input
+
     sub al, '0'            ; convertir char -> chiffre
     imul rbx, rbx, 10      ; entier *= 10
     add rbx, rax           ; entier += chiffre
 
     inc rcx                ; avancer pointeur
     jmp .convert_loop
+
+.invalid_input:
+    mov rax, 60            ; syscall: exit
+    mov rdi, 2             ; code retour = 2
+    syscall
+
 
 .done_convert:
     ; Tester la parité
