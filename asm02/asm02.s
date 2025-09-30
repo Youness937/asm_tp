@@ -4,7 +4,7 @@ section .bss
     buffer resb 4        ; réserver 4 octets pour l’entrée
 
 section .data
-    okmsg db "1337", 0xA ; message à afficher
+    okmsg db "1337", 0xA
     oklen equ $ - okmsg
 
 section .text
@@ -13,19 +13,29 @@ _start:
     mov rax, 0          ; syscall read
     mov rdi, 0          ; stdin
     mov rsi, buffer     ; adresse du buffer
-    mov rdx, 4          ; nombre max de caractères
+    mov rdx, 4          ; taille max
     syscall
 
-    ; comparer buffer[0] et buffer[1] avec '4' et '2'
-    mov al, byte [buffer]     ; premier caractère
+    ; vérifier si buffer[0] == '4'
+    mov al, byte [buffer]
     cmp al, '4'
-    jne not_equal             ; si ≠ '4' → pas bon
+    jne not_equal
 
-    mov al, byte [buffer+1]   ; deuxième caractère
+    ; vérifier si buffer[1] == '2'
+    mov al, byte [buffer+1]
     cmp al, '2'
-    jne not_equal             ; si ≠ '2' → pas bon
+    jne not_equal
 
-    ; si OK → write(1, okmsg, oklen)
+    ; vérifier que buffer[2] est bien \n ou 0
+    mov al, byte [buffer+2]
+    cmp al, 0xA         ; saut de ligne ?
+    je good_input
+    cmp al, 0           ; fin de chaîne ?
+    je good_input
+    jmp not_equal
+
+good_input:
+    ; write(1, okmsg, oklen)
     mov rax, 1
     mov rdi, 1
     mov rsi, okmsg
@@ -42,3 +52,4 @@ not_equal:
     mov rax, 60
     mov rdi, 1
     syscall
+
