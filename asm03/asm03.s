@@ -6,10 +6,13 @@ section .data
 
 section .text
 _start:
-    ; récupérer argc et argv depuis la pile
-    pop rdi             ; argc (non utilisé ici)
+    pop rdi             ; argc
+    cmp rdi, 2
+    jl not_equal        ; si argc < 2 → exit(1)
+
     pop rsi             ; argv[0] = nom du programme
-    pop rsi             ; argv[1] = premier argument (adresse de la chaîne)
+    pop rsi             ; argv[1] = adresse du premier argument
+
 
     ; vérifier si argv[1][0] == '4'
     mov al, byte [rsi]
