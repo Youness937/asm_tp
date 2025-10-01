@@ -1,84 +1,94 @@
 section .bss
-    buffer resb 32        ; buffer pour stocker le résultat converti en string
+    buffer resb 32
 
 section .text
     global _start
 
-; ────────────────────────────────
-; atoi : convertir une string -> entier
-; Entrée : rdi = pointeur sur string
-; Sortie : rax = entier
-; ────────────────────────────────
+; atoi avec gestion des nombres négatifs
 atoi:
-    xor rax, rax          ; résultat = 0
-.next_char:
-    movzx rcx, byte [rdi] ; lire caractère
-    test rcx, rcx
-    jz .done              ; si '\0', fin
-    sub rcx, '0'          ; convertir ASCII → chiffre
-    imul rax, rax, 10     ; rax = rax * 10
-    add rax, rcx          ; ajouter chiffre
+    xor rax, rax
+    mov rbx, 1            ; signe positif par défaut
+    movzx rcx, byte [rdi]
+    cmp rcx, '-'
+    jne .parse_digits
+    mov rbx, -1           ; signe négatif
     inc rdi
-    jmp .next_char
+.parse_digits:
+    movzx rcx, byte [rdi]
+    test rcx, rcx
+    jz .done
+    sub rcx, '0'
+    imul rax, rax, 10
+    add rax, rcx
+    inc rdi
+    jmp .parse_digits
 .done:
+    imul rax, rbx
     ret
 
-; ────────────────────────────────
-; itoa : convertir entier -> string
-; Entrée : rdi = entier
-; Sortie : rax = pointeur vers string
-; ────────────────────────────────
 itoa:
     mov rcx, 10
-    lea rsi, [buffer+31]  ; partir de la fin du buffer
-    mov byte [rsi], 0     ; terminateur nul
+    mov rbx, rdi          ; sauvegarder valeur
+    cmp rbx, 0
+    jge .positive
+    neg rbx               ; rendre positif
+    mov rdi, rbx
+    call itoa
+    dec rax
+    mov byte [rax], '-'
+    ret
+.positive:
+    lea rsi, [buffer+31]
+    mov byte [rsi], 0
 .convert:
     xor rdx, rdx
-    div rcx               ; rax / 10, reste dans rdx
-    add dl, '0'           ; chiffre → ASCII
+    mov rax, rbx
+    div rcx
+    add dl, '0'
     dec rsi
     mov [rsi], dl
-    test rax, rax
+    mov rbx, rax
+    test rbx, rbx
     jnz .convert
-    mov rax, rsi          ; retourner pointeur sur string
+    mov rax, rsi
     ret
 
-; ────────────────────────────────
-; _start : point d’entrée
-; ────────────────────────────────
 _start:
-    ; argv[1] est à [rsp+16]
-    mov rdi, [rsp+16]
-    call atoi
-    mov rbx, rax          ; sauvegarder premier entier
+    mov rbx, [rsp]        ; argc
+    cmp rbx, 3
+    jl .error
 
-    ; argv[2] est à [rsp+24]
-    mov rdi, [rsp+24]
+    mov rdi, [rsp+16]     ; argv[1]
     call atoi
-    add rax, rbx          ; rax = somme
+    mov r8, rax           ; premier entier
 
-    ; convertir résultat en string
+    mov rdi, [rsp+24]     ; argv[2]
+    call atoi
+    add rax, r8           ; somme
+
     mov rdi, rax
     call itoa
-    mov rsi, rax          ; adresse string résultat
+    mov rsi, rax
     mov rdx, buffer+32
-    sub rdx, rsi          ; longueur = fin - début
+    sub rdx, rsi
 
-    ; syscall write(1, rsi, rdx)
     mov rax, 1            ; write
-    mov rdi, 1            ; stdout
+    mov rdi, 1
     syscall
 
-    ; afficher un retour ligne
     mov rax, 1
     mov rdi, 1
     mov rsi, nl
     mov rdx, 1
     syscall
 
-    ; syscall exit(0)
-    mov rax, 60
+    mov rax, 60           ; exit(0)
     xor rdi, rdi
+    syscall
+
+.error:
+    mov rax, 60           ; exit(1)
+    mov rdi, 1
     syscall
 
 section .data
