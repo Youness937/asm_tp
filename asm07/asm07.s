@@ -10,8 +10,12 @@ atoi:
     movzx rcx, byte [rdi]
     test rcx, rcx
     jz .done
-    cmp rcx, 10          ; '\n' ?
-    je .done             ; arrêter si retour à la ligne
+    cmp rcx, 10
+    je .done
+    cmp rcx, '0'
+    jb .invalid
+    cmp rcx, '9'
+    ja .invalid
     sub rcx, '0'
     imul rax, rax, 10
     add rax, rcx
@@ -19,32 +23,30 @@ atoi:
     jmp .next
 .done:
     ret
-
+.invalid:
+    mov rax, 60
+    mov rdi, 2
+    syscall
 
 _start:
-    ; lire stdin
+    ; read(0, input, 32)
     mov rax, 0
     mov rdi, 0
     mov rsi, input
     mov rdx, 32
     syscall
 
-    ; atoi
     mov rdi, input
     call atoi
-    mov rbx, rax       ; n
+    mov rbx, rax
 
-    ; n <= 1 → not prime
     cmp rbx, 1
     jle .not_prime
 
-    ; n == 2 → prime
     cmp rbx, 2
     je .prime
 
-    ; i = 2
     mov rcx, 2
-
 .loop:
     cmp rcx, rbx
     jge .prime
