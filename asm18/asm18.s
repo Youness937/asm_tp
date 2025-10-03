@@ -2,13 +2,21 @@ section .data
     msg db "Hello, client!", 0
     msglen equ $-msg
 
-    timeout dq 2, 0        ; timeval {2 sec, 0 usec}
+    ; Timeout 2s
+    timeout dq 2, 0
 
-    sockaddr:              ; struct sockaddr_in
-        dw 2               ; AF_INET
-        dw 0x3930          ; port 12345 (big endian)
-        dd 0x0100007F      ; 127.0.0.1
-        dq 0               ; padding
+    ; sockaddr_in pour 127.0.0.1:12345
+    sockaddr:
+        dw 2                  ; AF_INET
+        dw 0x3930             ; port 12345 en big endian
+        dd 0x0100007F         ; 127.0.0.1
+        dq 0                  ; padding
+
+    successmsg db 'message: "Hello, client!"', 10
+    successmsglen equ $-successmsg
+
+    timeoutmsg db "Timeout: no response from server", 10
+    timeoutmsglen equ $-timeoutmsg
 
 section .bss
     buffer resb 128
@@ -19,17 +27,17 @@ section .text
 _start:
     ; --- socket(AF_INET, SOCK_DGRAM, 0) ---
     mov rax, 41
-    mov rdi, 2
-    mov rsi, 2
+    mov rdi, 2          ; AF_INET
+    mov rsi, 2          ; SOCK_DGRAM
     xor rdx, rdx
     syscall
-    mov r12, rax       ; fd
+    mov r12, rax        ; fd
 
     ; --- setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, 16) ---
     mov rax, 54
     mov rdi, r12
-    mov rsi, 1
-    mov rdx, 20
+    mov rsi, 1          ; SOL_SOCKET
+    mov rdx, 20         ; SO_RCVTIMEO
     lea r10, [rel timeout]
     mov r8, 16
     syscall
@@ -39,7 +47,7 @@ _start:
     mov rdi, r12
     lea rsi, [rel msg]
     mov rdx, msglen
-    xor r10, r10
+    xor r10, r10        ; flags
     lea r8, [rel sockaddr]
     mov r9, 16
     syscall
@@ -56,11 +64,11 @@ _start:
     cmp rax, 0
     jle .timeout
 
-    ; succès → afficher message
+    ; --- succès → afficher message ---
     mov rax, 1
     mov rdi, 1
-    lea rsi, [rel buffer]
-    mov rdx, rax       ; nb bytes reçus
+    mov rsi, successmsg
+    mov rdx, successmsglen
     syscall
 
     ; exit 0
@@ -69,7 +77,7 @@ _start:
     syscall
 
 .timeout:
-    ; afficher timeout
+    ; --- afficher timeout ---
     mov rax, 1
     mov rdi, 1
     mov rsi, timeoutmsg
@@ -80,7 +88,3 @@ _start:
     mov rax, 60
     mov rdi, 1
     syscall
-
-section .data
-timeoutmsg db "Timeout: no response from server", 10
-timeoutmsglen equ $-timeoutmsg
